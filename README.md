@@ -19,7 +19,7 @@ You can also run it on the command line by sending numbers via stdin
 
 ```
 make
- echo "4663"|.venv/bin/python ./trinine/t9.py ./data/
+ echo "4663"|.venv/bin/python ./data/
 home
 good
 gone
