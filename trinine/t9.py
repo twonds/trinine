@@ -4,8 +4,6 @@ import imp
 import os
 import sys
 
-import marisa_trie
-
 
 KEY_MAP = {0: [],
            1: [],
@@ -25,7 +23,7 @@ class T9:
     def __init__(self, data_dir="./data"):
         self.data_dir = data_dir
         self.data_module = self.data_dir+"/data.py"
-        self.trie_data_file = self.data_dir+"/t9.trie"
+
         self.suggest_length = 10
         self.word_length = 4
 
@@ -34,10 +32,6 @@ class T9:
         Load up words and tri data structure that is saved to disk.
         If it does not exist then use existing data to build it.
         """
-        if os.path.exists(self.trie_data_file):
-            self.word_trie = marisa_trie.Trie()
-            with open(self.trie_data_file, 'r') as f:
-                self.word_trie.read(f)
         if os.path.exists(self.data_module):
             self.data = imp.load_source('data', self.data_module)
         else:
@@ -47,6 +41,12 @@ class T9:
             sys.exit(1)
 
     def map_number(self, number):
+        """
+        Map numbers from a dial pad to characters.
+
+        @param number: A string of numbers dialed from a key pad.
+        @type number: C{int}
+        """
         ret_chars = []
         for num in str(number):
             chars = KEY_MAP[int(num)]
@@ -56,11 +56,18 @@ class T9:
         return ret_chars
 
     def _sort(self, words):
-        return list(sorted(words,
-                           key=lambda x: self.data.WORDS.get(x, 0),
-                           reverse=True))
+        return sorted(words,
+                      key=lambda x: self.data.WORDS.get(x, 0),
+                      reverse=True)
 
     def map_words(self, number):
+        """
+        Map a string of numbers from a phone's key pad to possible
+        words.
+
+        @param number: A string of numbers dialed from a key pad.
+        @type number: C{int}
+        """
         number_words = []
         for i, chars in enumerate(self.map_number(number)):
             if i == 0:
@@ -80,6 +87,9 @@ class T9:
         """
         Given a number return possible word combinations
         sorted by usage frequency.
+
+        @param number: A string of numbers dialed from a key pad.
+        @type number: C{int}
         """
         ret_words = []
         number_words = self.map_words(number)
@@ -102,12 +112,16 @@ class T9:
 def main_user_loop(t):
     while True:
         try:
-            number = input("Enter a number: ")
+            number = int(input("Enter a number: "))
         except EOFError:
             break
         except SyntaxError:
             break
-        for word in t.words(int(number)):
+        except TypeError:
+            if number != 'quit':
+                print "Invalid number"
+            break
+        for word in t.words(number):
             print word
 
 
@@ -115,7 +129,8 @@ def stdin_loop(t):
     for number in sys.stdin:
         if not number.strip():
             break
-        for word in t.words(int(number)):
+        number = int(number.strip())
+        for word in t.words(number):
             print word
 
 
