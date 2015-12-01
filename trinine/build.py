@@ -11,28 +11,26 @@ import marisa_trie
 
 WORDS = {words}
 
-trie = marisa_trie.Trie(WORDS.keys())
+TRIE = marisa_trie.Trie(WORDS.keys())
 
 """
 
 
-def write(words_file, frequency_file):
-    path = os.path.dirname(words_file)
+def write(frequency_file):
+    """
+    Read in a frequency file.
+    Use the data in this file to write out a new data module.
+    """
+    path = os.path.dirname(frequency_file)
     words = {}
-    with open(words_file) as f:
-        word = f.readline()
-        while word:
-            words[unicode(word.strip())] = 0
-            word = f.readline()
 
     frequency_list = []
     with open(frequency_file) as f:
         frequency_list = f.readlines()
     # XXX - make the frequency number better
-
     frequent = len(frequency_list)
     for cword in frequency_list:
-        cword = cword.strip()
+        cword = unicode(cword.strip())
         words[cword] = frequent
         frequent -= 1
 
@@ -41,8 +39,8 @@ def write(words_file, frequency_file):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 3:
-        write(sys.argv[1], sys.argv[2])
+    if len(sys.argv) == 2:
+        write(sys.argv[1])
     else:
         usage = "Usage: {0} <word_list> <word_frequency_list>"
         print usage.format(sys.argv[0])

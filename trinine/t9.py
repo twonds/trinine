@@ -2,6 +2,7 @@
 """
 import imp
 import os
+import sys
 
 import marisa_trie
 
@@ -25,6 +26,8 @@ class T9:
         self.data_dir = data_dir
         self.data_module = self.data_dir+"/data.py"
         self.trie_data_file = self.data_dir+"/t9.trie"
+        self.suggest_length = 10
+        self.word_length = 4
 
     def load(self):
         """
@@ -37,6 +40,11 @@ class T9:
                 self.word_trie.read(f)
         if os.path.exists(self.data_module):
             self.data = imp.load_source('data', self.data_module)
+        else:
+            msg = "WARNING: Data module is not loaded. "
+            msg += "Please build by running `make build-data`"
+            print msg
+            sys.exit(1)
 
     def map_number(self, number):
         ret_chars = []
@@ -47,23 +55,84 @@ class T9:
             ret_chars.append(chars)
         return ret_chars
 
-    def words(self, number):
-        """
-        Given a number return possible word combinations sorted by frequency.
-        """
-        ret_words = []
+    def _sort(self, words):
+        return list(sorted(words,
+                           key=lambda x: self.data.WORDS.get(x, 0),
+                           reverse=True))
+
+    def map_words(self, number):
+        number_words = []
         for i, chars in enumerate(self.map_number(number)):
             if i == 0:
-                ret_words = chars
+                number_words = chars
             else:
                 new_words = []
-                for word in ret_words:
+                for word in number_words:
                     for c in chars:
                         new_word = word+c
-                        if self.data.trie.keys(new_word):
+                        # Only use words in our word trie
+                        if self.data.TRIE.keys(new_word):
                             new_words.append(new_word)
-                ret_words = new_words
+                number_words = new_words
+        return number_words
 
-        return sorted(filter(lambda x: x in self.data.trie, ret_words),
-                      key=lambda x: self.data.WORDS[x],
-                      reverse=True)
+    def words(self, number):
+        """
+        Given a number return possible word combinations
+        sorted by usage frequency.
+        """
+        ret_words = []
+        number_words = self.map_words(number)
+
+        # Sort and filter words, adding extra words if our options are slim
+        suggested_words = []
+        for word in self._sort(number_words):
+            if word in self.data.WORDS:
+                ret_words.append(word)
+
+            word_keys = filter(lambda x: x != word,
+                               self._sort(self.data.TRIE.keys(word)))
+            suggested_words += word_keys[:self.suggest_length]
+
+        ret_words = ret_words + self._sort(suggested_words)
+
+        return ret_words[:self.suggest_length]
+
+
+def main_user_loop(t):
+    while True:
+        try:
+            number = input("Enter a number: ")
+        except EOFError:
+            break
+        except SyntaxError:
+            break
+        for word in t.words(int(number)):
+            print word
+
+
+def stdin_loop(t):
+    for number in sys.stdin:
+        if not number.strip():
+            break
+        for word in t.words(int(number)):
+            print word
+
+
+def main(data_dir, user_input=None):
+    t = T9(data_dir=data_dir)
+    # Load data module. Remember to build it.
+    t.load()
+    if user_input:
+        main_user_loop(t)
+    else:
+        stdin_loop(t)
+
+if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        main(sys.argv[1], sys.argv[2])
+    elif len(sys.argv) == 2:
+        main(sys.argv[1])
+    else:
+        usage = "Usage: {0} <data_directory>"
+        print usage.format(sys.argv[0])
